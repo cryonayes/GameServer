@@ -1,3 +1,5 @@
+using MasterServer;
+
 namespace GameServer.ServerSide.Lobby;
 
 public class LobbyManager
@@ -14,6 +16,12 @@ public class LobbyManager
     {
         return _instance ??= new LobbyManager();
     }
+
+    public Lobby? GetLobbyById(string id)
+    {
+        var lobby = _lobbies.Find(lobby => lobby.GetId().Equals(id));
+        return lobby ?? _lobbies[^1];
+    }
     
     public Lobby GetOrCreateLobby(string id, int capacity)
     {
@@ -29,13 +37,9 @@ public class LobbyManager
         ClientSend.SpawnPlayers(lobby);
     }
     
-    public Lobby? GetLobyWithPlayerId(int id)
+    public Lobby? GetLobbyWithPlayerId(int id)
     {
-        foreach (var lobby in _lobbies)
-            foreach (var playerId in lobby.GetPlayers())
-                if (playerId == id)
-                    return lobby;
-        return null;
+        return _lobbies.FirstOrDefault(lobby => lobby.GetPlayers().Any(playerId => playerId == id));
     }
     
     private void OnLobbyEmpty(Lobby lobby)
@@ -56,11 +60,12 @@ public class LobbyManager
             Capacity = maxPlayers;
         }
         
-        public void AddPlayer(int _playerId)
+        public void AddPlayer(int playerId)
         {
-            _players.Add(_playerId);
+            _players.Add(playerId);
+            ClientSend.PlayerConnected(Globals.MasterServer, playerId);
             if (Capacity == _players.Count)
-                _instance.OnLobbyFull(this);
+                _instance?.OnLobbyFull(this);
         }
 
         public string GetId()
@@ -76,6 +81,7 @@ public class LobbyManager
         public void RemovePlayer(int id)
         {
             if (!_players.Remove(id)) return;
+            ClientSend.PlayerDisconnect(Globals.MasterServer, id);
             if (_players.Count == 0)
                 _instance?.OnLobbyEmpty(this);
         }

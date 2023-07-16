@@ -1,39 +1,38 @@
 ﻿using System.Numerics;
 using GameServer.Common;
 using GameServer.ServerSide.Lobby;
-using MasterServer;
 
 namespace GameServer.ServerSide
 {
     internal abstract class ClientSend
     {
-        private static void SendTcpData(int _toClient, Packet _packet)
+        private static void SendTcpData(int toClient, Packet packet)
         {
-            _packet.WriteLength();
-            Server.Clients[_toClient].tcp.SendData(_packet);
+            packet.WriteLength();
+            Server.Clients[toClient].Tcp.SendData(packet);
         }
         
-        private static void SendUdpData(int _toClient, Packet _packet)
+        private static void SendUdpData(int toClient, Packet packet)
         {
-            _packet.WriteLength();
-            Server.Clients[_toClient].udp.SendData(_packet);
+            packet.WriteLength();
+            Server.Clients[toClient].Udp.SendData(packet);
         }
 
         #region Packets
         
-        public static void Welcome(int _toClient)
+        public static void Welcome(int toClient)
         {
-            using var _packet = new Packet((int)GameServerToClient.Welcome);
-            _packet.Write(_toClient);
-            SendTcpData(_toClient, _packet);
+            using var packet = new Packet((int)GameServerToClient.Welcome);
+            packet.Write(toClient);
+            SendTcpData(toClient, packet);
         }
         
-        public static void LobbyReady(int _toClient, string _lobbyId)
+        public static void LobbyReady(int toClient, string lobbyId)
         {
             var packet = new Packet((int)GameServerToMaster.LobbyReady);
-            packet.Write(_lobbyId);
+            packet.Write(lobbyId);
             
-            SendTcpData(_toClient, packet);
+            SendTcpData(toClient, packet);
         }
         
         public static void SpawnPlayers(LobbyManager.Lobby lobby)
@@ -55,26 +54,26 @@ namespace GameServer.ServerSide
             }
         }
 
-        public static void PlayerMove(int _toClient, int movingID, Vector3 move)
+        public static void PlayerMove(int toClient, int movingId, Vector3 move)
         {
             using var packet = new Packet((int) GameServerToClient.PlayerMove);
-            packet.Write(movingID);
+            packet.Write(movingId);
             packet.Write(move);
 
-            SendUdpData(_toClient, packet);
+            SendUdpData(toClient, packet);
         }
         
-        public static void PlayerConnected(int masterServer)
+        public static void PlayerConnected(int masterServer, int playerId)
         {
             using var packet = new Packet((int)GameServerToMaster.PlayerConnected);
-            packet.Write("Connected");
+            packet.Write(playerId);
             SendTcpData(masterServer, packet);
         }
         
-        public static void PlayerDisconnect(int masterServer)
+        public static void PlayerDisconnect(int masterServer, int playerId)
         {
             using var packet = new Packet((int)GameServerToMaster.PlayerDisconnected);
-            packet.Write("Disconnected");
+            packet.Write(playerId);
             SendTcpData(masterServer, packet);
         }
         

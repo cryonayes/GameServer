@@ -1,29 +1,26 @@
-﻿using GameServer.Database;
-using GameServer.ServerSide;
+﻿using GameServer.ServerSide;
 using GameServer.Threading;
 using MasterServer;
 
 var mainThread = new Thread(MainThread);
 mainThread.Start();
 
-MongoCrud.Connect(Globals.MongoUri, Globals.DatabaseName, Globals.CollectionName);
-
 Server.Start(1338);
 
 static void MainThread()
 {
     Console.WriteLine($"Main thread started. Running at {Constants.TicksPerSec} ticks per second.");
-    var _nextLoop = DateTime.Now;
+    var nextLoop = DateTime.Now;
 
     while (true)
     {
-        while (_nextLoop < DateTime.Now)
+        while (nextLoop < DateTime.Now)
         {
             ThreadManager.UpdateMain();
-            _nextLoop = _nextLoop.AddMilliseconds(Constants.MsPerTick);
+            nextLoop = nextLoop.AddMilliseconds(Constants.MsPerTick);
 
-            if (_nextLoop > DateTime.Now)
-                Thread.Sleep(_nextLoop - DateTime.Now);
+            if (nextLoop > DateTime.Now)
+                Thread.Sleep(nextLoop - DateTime.Now);
         }
     }
 }

@@ -12,8 +12,7 @@ public enum GameServerToClient
 public enum ClientToGameServer
 {
     JoinLobby = 30,
-    PlayerMove,
-    OnFinishLine,
+    PlayerMove
 }
 
 public enum MasterToGameServer

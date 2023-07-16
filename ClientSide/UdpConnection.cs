@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Net;
 using GameServer.Common;
 using GameServer.ServerSide;
@@ -7,49 +8,35 @@ namespace GameServer.ClientSide;
 
 public class UdpConnection
 {
-    public IPEndPoint endPoint;
+    public IPEndPoint EndPoint;
 
-    private int id;
+    private readonly int _id;
 
-    public UdpConnection(int _id)
+    public UdpConnection(int id)
     {
-        id = _id;
+        _id = id;
     }
 
-    /// <summary>Initializes the newly connected client's UDP-related info.</summary>
-    /// <param name="_endPoint">The IPEndPoint instance of the newly connected client.</param>
-    public void Connect(IPEndPoint _endPoint)
+    public void Connect(IPEndPoint endPoint)
     {
-        endPoint = _endPoint;
+        EndPoint = endPoint;
     }
 
-    /// <summary>Sends data to the client via UDP.</summary>
-    /// <param name="_packet">The packet to send.</param>
-    public void SendData(Packet _packet)
+    public void SendData(Packet packet)
     {
-        Server.SendUDPData(endPoint, _packet);
+        Server.SendUDPData(EndPoint, packet);
     }
 
-    /// <summary>Prepares received data to be used by the appropriate packet handler methods.</summary>
-    /// <param name="_packetData">The packet containing the recieved data.</param>
-    public void HandleData(Packet _packetData)
+    public void HandleData(Packet packetData)
     {
-        int _packetLength = _packetData.ReadInt();
-        byte[] _packetBytes = _packetData.ReadBytes(_packetLength);
+        var packetLength = packetData.ReadInt();
+        var packetBytes = packetData.ReadBytes(packetLength);
 
         ThreadManager.ExecuteOnMainThread(() =>
         {
-            using (Packet _packet = new Packet(_packetBytes))
-            {
-                int _packetId = _packet.ReadInt();
-                Server.PacketHandlers[_packetId](id, _packet); // Call appropriate method to handle the packet
-            }
+            using var packet = new Packet(packetBytes);
+            var packetId = packet.ReadInt();
+            Server.PacketHandlers[packetId](_id, packet);
         });
-    }
-
-    /// <summary>Cleans up the UDP connection.</summary>
-    public void Disconnect()
-    {
-        endPoint = null;
     }
 }

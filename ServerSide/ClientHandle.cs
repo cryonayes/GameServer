@@ -1,5 +1,4 @@
 ﻿using GameServer.Common;
-using GameServer.Database;
 using GameServer.ServerSide.Lobby;
 using MasterServer;
 
@@ -7,35 +6,32 @@ namespace GameServer.ServerSide
 {
     internal abstract class ClientHandle
     {
-        public static void LoginReceivedToLobby(int _fromClient, Packet _packet)
+        public static void LoginReceivedToLobby(int fromClient, Packet packet)
         {
-            var lobbyId = _packet.ReadString();
-            
-            var lobby = LobbyManager.GetInstance().GetOrCreateLobby(lobbyId, 2);
-            lobby.AddPlayer(_fromClient);
-            ClientSend.PlayerConnected(Globals.MasterServer);
+            var lobbyId = packet.ReadString();
+
+            var lobby = LobbyManager.GetInstance().GetLobbyById(lobbyId);
+            lobby?.AddPlayer(fromClient);
         }
 
-        public static void LobbyRequestReceived(int _fromClient, Packet _packet)
+        public static void LobbyRequestReceived(int fromClient, Packet packet)
         {
-            var lobbyId = _packet.ReadString();
-            var capacity = _packet.ReadInt();
+            var lobbyId = packet.ReadString();
+            var capacity = packet.ReadInt();
 
-            Globals.MasterServer = _fromClient;
+            Globals.MasterServer = fromClient;
             LobbyManager.GetInstance().GetOrCreateLobby(lobbyId, capacity);
-            ClientSend.LobbyReady(_fromClient, lobbyId);
+            ClientSend.LobbyReady(fromClient, lobbyId);
         }
 
-        public static void OnPlayerMove(int _fromClient, Packet _packet)
+        public static void OnPlayerMove(int fromClient, Packet packet)
         {
-            var move = _packet.ReadVector3();
-            var lobby = LobbyManager.GetInstance().GetLobyWithPlayerId(_fromClient);
+            var move = packet.ReadVector3();
+            var lobby = LobbyManager.GetInstance().GetLobbyWithPlayerId(fromClient);
 
-            foreach (var playerId in lobby.GetPlayers())
-            {
-                if (playerId == _fromClient) continue;
-                ClientSend.PlayerMove(playerId, _fromClient, move);
-            }
-         }
+            if (lobby == null) return;
+            foreach (var playerId in lobby.GetPlayers().Where(playerId => playerId != fromClient))
+                ClientSend.PlayerMove(playerId, fromClient, move);
+        }
     }
 }

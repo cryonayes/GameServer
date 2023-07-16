@@ -1,7 +1,6 @@
 using System.Net.Sockets;
 using GameServer.Common;
 using GameServer.ServerSide;
-using GameServer.ServerSide.Lobby;
 using GameServer.Threading;
 
 namespace GameServer.ClientSide;
@@ -40,7 +39,7 @@ public class TcpConnection
         try
         {
             if (Socket != null)
-                _stream?.BeginWrite(packet.ToArray(), 0, packet.Length(), null, null); // Send data to appropriate client
+                _stream?.BeginWrite(packet.ToArray(), 0, packet.Length(), null, null);
         }
         catch (Exception ex)
         {
@@ -71,20 +70,20 @@ public class TcpConnection
         {
             Console.WriteLine($"Error receiving TCP data: {ex}");
             Server.Clients[_id].Disconnect();
-
         }
     }
 
     private bool HandleData(byte[] data)
     {
         var packetLength = 0;
-        
+
+        if (_receivedData == null) return true;
         _receivedData.SetBytes(data);
         if (_receivedData.UnreadLength() >= 4)
         {
             packetLength = _receivedData.ReadInt();
             if (packetLength <= 0)
-                return true; 
+                return true;
         }
 
         while (packetLength > 0 && packetLength <= _receivedData.UnreadLength())
@@ -94,20 +93,19 @@ public class TcpConnection
             {
                 using var packet = new Packet(packetBytes);
                 var packetId = packet.ReadInt();
-                Server.PacketHandlers[packetId](_id, packet); // Call appropriate method to handle the packet
+                Server.PacketHandlers[packetId](_id, packet);
             });
 
-            packetLength = 0; // Reset packet length
+            packetLength = 0;
             if (_receivedData.UnreadLength() < 4) continue;
             packetLength = _receivedData.ReadInt();
             if (packetLength <= 0)
             {
-                return true; // Reset receivedData instance to allow it to be reused
+                return true;
             }
         }
 
         return packetLength <= 1;
-        // Reset receivedData instance to allow it to be reused
     }
 
     public void Disconnect()

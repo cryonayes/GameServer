@@ -1,8 +1,8 @@
-﻿using System.Net;
+﻿using System.Collections.Concurrent;
+using System.Net;
 using System.Net.Sockets;
 using GameServer.ClientSide;
 using GameServer.Common;
-
 namespace GameServer.ServerSide
 {
     static class Server
@@ -47,7 +47,7 @@ namespace GameServer.ServerSide
                     continue;
                 }
                 Clients[_i] = new Client(_i);
-                Clients[_i].tcp.Connect(client);
+                Clients[_i].Tcp.Connect(client);
                 return;
             }
         }
@@ -69,17 +69,17 @@ namespace GameServer.ServerSide
                 if (clientId == 0)
                     return;
 
-                if (Clients[clientId].udp.endPoint == null)
+                if (Clients[clientId].Udp.EndPoint == null)
                 {
                     // If this is a new connection
-                    Clients[clientId].udp.Connect(clientEndPoint);
+                    Clients[clientId].Udp.Connect(clientEndPoint);
                     return;
                 }
 
-                if (Clients[clientId].udp.endPoint.ToString() == clientEndPoint.ToString())
+                if (Clients[clientId].Udp.EndPoint.ToString() == clientEndPoint.ToString())
                 {
                     // Ensures that the client is not being impersonated by another by sending a false clientID
-                    Clients[clientId].udp.HandleData(packet);
+                    Clients[clientId].Udp.HandleData(packet);
                 }
             }
             catch (Exception _ex)
