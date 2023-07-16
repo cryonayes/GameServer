@@ -2,7 +2,7 @@ namespace GameServer.ServerSide.Lobby;
 
 public class LobbyManager
 {
-    private static LobbyManager _instance;
+    private static LobbyManager? _instance;
     private readonly List<Lobby> _lobbies;
     
     private LobbyManager()
@@ -12,21 +12,35 @@ public class LobbyManager
     
     public static LobbyManager GetInstance()
     {
-        _instance ??= new LobbyManager();
-        return _instance;
+        return _instance ??= new LobbyManager();
     }
     
-    private void OnLobbyFull(Lobby _lobby)
+    public Lobby GetOrCreateLobby(string id, int capacity)
     {
-        var _players = _lobby.GetPlayers();
-        foreach (var _player in _players)
-            ClientSend.JoinToLobby(_player, _lobby.GetId());
-        _lobbies.Remove(_lobby);
+        var lobby = _lobbies.Find(lobby => lobby.GetId().Equals(id) && lobby.Capacity == capacity);
+        if (lobby != null)
+            return lobby;
+        _lobbies.Add(new Lobby(id, capacity));
+        return _lobbies[^1];
     }
 
-    public Lobby GetLobbyById(string _lobbyId)
+    private void OnLobbyFull(Lobby lobby)
     {
-        return _lobbies.FirstOrDefault(_lobby => _lobby.GetId() == _lobbyId);
+        ClientSend.SpawnPlayers(lobby);
+    }
+    
+    public Lobby? GetLobyWithPlayerId(int id)
+    {
+        foreach (var lobby in _lobbies)
+            foreach (var playerId in lobby.GetPlayers())
+                if (playerId == id)
+                    return lobby;
+        return null;
+    }
+    
+    private void OnLobbyEmpty(Lobby lobby)
+    {
+        _lobbies.Remove(lobby);
     }
     
     public class Lobby
@@ -34,17 +48,12 @@ public class LobbyManager
         private readonly string _lobbyId;
         private readonly List<int> _players;
         public readonly int Capacity;
-
-        public Lobby(int _maxPlayers)
+        
+        public Lobby(string id, int maxPlayers)
         {
-            _players = new List<int>();
-            _lobbyId = Guid.NewGuid().ToString();
-            Capacity = _maxPlayers;
-        }
-
-        public bool Available()
-        {
-            return Capacity > _players.Count;
+            _players = new ();
+            _lobbyId = id;
+            Capacity = maxPlayers;
         }
         
         public void AddPlayer(int _playerId)
@@ -62,6 +71,13 @@ public class LobbyManager
         public List<int> GetPlayers()
         {
             return _players;
+        }
+
+        public void RemovePlayer(int id)
+        {
+            if (!_players.Remove(id)) return;
+            if (_players.Count == 0)
+                _instance?.OnLobbyEmpty(this);
         }
     }
 }

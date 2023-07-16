@@ -1,29 +1,30 @@
 namespace GameServer.Common;
 
 // Sent from master server to client
-public enum MasterToClient
-{
-    Welcome = 1,
-    LoginSuccess,
-    LoginFailed,
-    GoJoinLobby,
-}
 
-// Sent from client to master server.
-public enum ClientToMaster
+public enum GameServerToClient
 {
-    Login = 1,
-    LobbyRequest
+    Welcome = 20,
+    AddPlayers,
+    PlayerMove
 }
-
-// Sent from game server to master server
-public enum GameServerToMaster
+    
+public enum ClientToGameServer
 {
-    Welcome = 1,
-    LobbyReady
+    JoinLobby = 30,
+    PlayerMove,
+    OnFinishLine,
 }
 
 public enum MasterToGameServer
 {
-    LobbyInfo = 1
+    LobbyInfo = 50
+}
+
+public enum GameServerToMaster
+{
+    Welcome = 40,
+    LobbyReady,
+    PlayerConnected,
+    PlayerDisconnected
 }

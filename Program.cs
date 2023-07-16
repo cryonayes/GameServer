@@ -1,11 +1,12 @@
-﻿// See https://aka.ms/new-console-template for more information
-
+﻿using GameServer.Database;
 using GameServer.ServerSide;
 using GameServer.Threading;
 using MasterServer;
 
 var mainThread = new Thread(MainThread);
 mainThread.Start();
+
+MongoCrud.Connect(Globals.MongoUri, Globals.DatabaseName, Globals.CollectionName);
 
 Server.Start(1338);
 

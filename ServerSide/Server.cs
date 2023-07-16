@@ -105,8 +105,9 @@ namespace GameServer.ServerSide
         {
             PacketHandlers = new Dictionary<int, PacketHandler>
             {
-                { (int)ClientToMaster.Login, ClientHandle.LoginReceived },
-                { (int)ClientToMaster.LobbyRequest, ClientHandle.LobbyRequestReceived },
+                { (int)MasterToGameServer.LobbyInfo, ClientHandle.LobbyRequestReceived },
+                { (int)ClientToGameServer.JoinLobby, ClientHandle.LoginReceivedToLobby },
+                { (int)ClientToGameServer.PlayerMove, ClientHandle.OnPlayerMove },
             };
             Console.WriteLine("Initialized packets.");
         }

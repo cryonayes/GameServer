@@ -1,28 +1,29 @@
 using System.Net.Sockets;
 using GameServer.Common;
 using GameServer.ServerSide;
+using GameServer.ServerSide.Lobby;
 using GameServer.Threading;
 
 namespace GameServer.ClientSide;
 
 public class TcpConnection
 {
-    public TcpClient Socket;
+    public TcpClient? Socket;
     
 
     private readonly int _id;
-    private NetworkStream _stream;
-    private Packet _receivedData;
-    private byte[] _receiveBuffer;
+    private NetworkStream? _stream;
+    private Packet? _receivedData;
+    private byte[]? _receiveBuffer;
 
-    public TcpConnection(int _id)
+    public TcpConnection(int id)
     {
-        this._id = _id;
+        _id = id;
     }
 
-    public void Connect(TcpClient _socket)
+    public void Connect(TcpClient socket)
     {
-        Socket = _socket;
+        Socket = socket;
         Socket.ReceiveBufferSize = Client.DataBufferSize;
         Socket.SendBufferSize = Client.DataBufferSize;
 
@@ -31,84 +32,87 @@ public class TcpConnection
         _receiveBuffer = new byte[Client.DataBufferSize];
 
         _stream.BeginRead(_receiveBuffer, 0, Client.DataBufferSize, ReceiveCallback, null);
-        ClientSend.Welcome(_id, "Welcome to the MasterServer!");
+        ClientSend.Welcome(_id);
     }
 
-    public void SendData(Packet _packet)
+    public void SendData(Packet packet)
     {
         try
         {
             if (Socket != null)
-                _stream.BeginWrite(_packet.ToArray(), 0, _packet.Length(), null, null); // Send data to appropriate client
+                _stream?.BeginWrite(packet.ToArray(), 0, packet.Length(), null, null); // Send data to appropriate client
         }
-        catch (Exception _ex)
+        catch (Exception ex)
         {
-            Console.WriteLine($"Error sending data to player {_id} via TCP: {_ex}");
+            Console.WriteLine($"Error sending data to player {_id} via TCP: {ex}");
         }
     }
 
-    private void ReceiveCallback(IAsyncResult _result)
+    private void ReceiveCallback(IAsyncResult result)
     {
         try
         {
-            var _byteLength = _stream.EndRead(_result);
-            if (_byteLength <= 0)
+            if (_stream == null) return;
+            var byteLength = _stream.EndRead(result);
+            if (byteLength <= 0)
             {
                 Server.Clients[_id].Disconnect();
                 return;
             }
 
-            var _data = new byte[_byteLength];
-            Array.Copy(_receiveBuffer, _data, _byteLength);
+            var data = new byte[byteLength];
+            if (_receiveBuffer == null) return;
+            Array.Copy(_receiveBuffer, data, byteLength);
 
-            _receivedData.Reset(HandleData(_data)); 
+            _receivedData?.Reset(HandleData(data));
             _stream.BeginRead(_receiveBuffer, 0, Client.DataBufferSize, ReceiveCallback, null);
         }
-        catch (Exception _ex)
+        catch (Exception ex)
         {
-            Console.WriteLine($"Error receiving TCP data: {_ex}");
+            Console.WriteLine($"Error receiving TCP data: {ex}");
             Server.Clients[_id].Disconnect();
+
         }
     }
 
-    private bool HandleData(byte[] _data)
+    private bool HandleData(byte[] data)
     {
-        var _packetLength = 0;
+        var packetLength = 0;
         
-        _receivedData.SetBytes(_data);
+        _receivedData.SetBytes(data);
         if (_receivedData.UnreadLength() >= 4)
         {
-            _packetLength = _receivedData.ReadInt();
-            if (_packetLength <= 0)
+            packetLength = _receivedData.ReadInt();
+            if (packetLength <= 0)
                 return true; 
         }
 
-        while (_packetLength > 0 && _packetLength <= _receivedData.UnreadLength())
+        while (packetLength > 0 && packetLength <= _receivedData.UnreadLength())
         {
-            var _packetBytes = _receivedData.ReadBytes(_packetLength);
+            var packetBytes = _receivedData.ReadBytes(packetLength);
             ThreadManager.ExecuteOnMainThread(() =>
             {
-                using var _packet = new Packet(_packetBytes);
-                var _packetId = _packet.ReadInt();
-                Server.PacketHandlers[_packetId](_id, _packet); // Call appropriate method to handle the packet
+                using var packet = new Packet(packetBytes);
+                var packetId = packet.ReadInt();
+                Server.PacketHandlers[packetId](_id, packet); // Call appropriate method to handle the packet
             });
 
-            _packetLength = 0; // Reset packet length
+            packetLength = 0; // Reset packet length
             if (_receivedData.UnreadLength() < 4) continue;
-            _packetLength = _receivedData.ReadInt();
-            if (_packetLength <= 0)
+            packetLength = _receivedData.ReadInt();
+            if (packetLength <= 0)
             {
                 return true; // Reset receivedData instance to allow it to be reused
             }
         }
 
-        return _packetLength <= 1;
+        return packetLength <= 1;
         // Reset receivedData instance to allow it to be reused
     }
 
     public void Disconnect()
     {
-        Socket.Close();
+        Socket?.Close();
         _stream = null;
         _receivedData = null;
         _receiveBuffer = null;
